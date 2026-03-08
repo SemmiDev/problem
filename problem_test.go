@@ -163,3 +163,41 @@ func TestProblemHTTPWrite(t *testing.T) {
 		t.Errorf("expected nosniff, got %v", snif)
 	}
 }
+
+func TestProblemHTTPHelpers(t *testing.T) {
+	p := problem.New(problem.BadRequest, problem.WithDetail("Invalid ID"))
+
+	t.Run("Headers", func(t *testing.T) {
+		headers := p.Headers()
+		if headers["Content-Type"] != problem.ContentType {
+			t.Errorf("expected Content-Type %s, got %s", problem.ContentType, headers["Content-Type"])
+		}
+		if headers["X-Content-Type-Options"] != "nosniff" {
+			t.Errorf("expected X-Content-Type-Options nosniff, got %s", headers["X-Content-Type-Options"])
+		}
+	})
+
+	t.Run("JSON", func(t *testing.T) {
+		data := p.JSON()
+		var m map[string]any
+		if err := json.Unmarshal(data, &m); err != nil {
+			t.Fatalf("JSON() returned invalid json: %v", err)
+		}
+		if m["title"] != "Bad Request" || m["detail"] != "Invalid ID" {
+			t.Errorf("JSON() content mismatch: %v", m)
+		}
+	})
+
+	t.Run("Map", func(t *testing.T) {
+		m := p.Map()
+		if m["title"] != "Bad Request" {
+			t.Errorf("Map() expected title 'Bad Request', got %v", m["title"])
+		}
+		if m["status"].(float64) != 400 {
+			t.Errorf("Map() expected status 400, got %v", m["status"])
+		}
+		if m["detail"] != "Invalid ID" {
+			t.Errorf("Map() expected detail 'Invalid ID', got %v", m["detail"])
+		}
+	})
+}
